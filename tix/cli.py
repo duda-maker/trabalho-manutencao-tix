@@ -10,7 +10,7 @@ from pathlib import Path
 from tix.storage.json_storage import TaskStorage
 # from tix.storage.context_storage import ContextStorage
 from tix.storage.history import HistoryManager
-from tix.storage.backup import create_backup, list_backups, restore_from_backup
+from tix.storage.backup import create_backup, list_backups, restore_from_backup, verify_backup
 from tix.models import Task
 from rich.prompt import Prompt
 from rich.markdown import Markdown
@@ -160,6 +160,17 @@ def backup_list(data_file):
         console.print(f"[red]Failed to list backups:[/red] {e}")
         raise click.Abort()
 
+@backup.command("verify")
+@click.argument("backup_file", required=True)
+def backup_verify(backup_file):
+    """Verify whether a backup file is valid."""
+    valid, message = verify_backup(backup_file)
+
+    if valid:
+        console.print(f"[green]✓ {message}[/green]")
+    else:
+        console.print(f"[red]✗ {message}[/red]")
+        raise click.Abort()
 
 @backup.command("restore")
 @click.argument("backup_file", required=True)

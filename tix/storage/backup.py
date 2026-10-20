@@ -50,6 +50,43 @@ def list_backups(data_path: Path):
     files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return files
 
+def verify_backup(backup_file: str) -> tuple[bool, str]:
+    path = Path(backup_file).expanduser()
+
+    if not path.exists() or not path.is_file():
+        return False, "Backup file not found"
+
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return False, "Invalid JSON"
+    except OSError:
+        return False, "Backup file could not be read"
+
+    # Formato antigo: lista de tarefas
+    if isinstance(data, list):
+        if all(isinstance(task, dict) for task in data):
+            return True, "Valid backup"
+        return False, "Invalid backup structure"
+
+    # Formato atual
+    if not isinstance(data, dict):
+        return False, "Invalid backup structure"
+
+    if "next_id" not in data or "tasks" not in data:
+        return False, "Invalid backup structure"
+
+    if not isinstance(data["next_id"], int):
+        return False, "Invalid backup structure"
+
+    if not isinstance(data["tasks"], list):
+        return False, "Invalid backup structure"
+
+    if not all(isinstance(task, dict) for task in data["tasks"]):
+        return False, "Invalid backup structure"
+
+    return True, "Valid backup"
+
 def restore_from_backup(backup_file: str, data_path: Path, require_confirm: bool = True):
     """
     Restore the data file from a backup.
