@@ -48,6 +48,13 @@ def copy_attachments(task, attach):
         except Exception as e:
             console.print(f"[red]✗[/red] Failed to attach {file_path}: {e}")
 
+def mark_task_done(task):
+    if hasattr(task, "mark_done"):
+        task.mark_done()
+    else:
+        task.completed = True
+        task.completed_at = datetime.now().isoformat()
+
 def parse_time_estimate(time_str: str) -> int:
     """Parse time string like '2h', '30m', '1h30m' into minutes"""
     time_str = time_str.lower().strip()
@@ -361,11 +368,7 @@ def done(task_id):
         return
 
     # mark and persist
-    if hasattr(task, "mark_done"):
-        task.mark_done()
-    else:
-        task.completed = True
-        task.completed_at = datetime.now().isoformat()
+    mark_task_done(task)
     storage.update_task(task)
 
     if CONFIG.get('notifications', {}).get('on_completion', True):
