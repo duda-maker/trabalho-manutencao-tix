@@ -55,6 +55,19 @@ def mark_task_done(task):
         task.completed = True
         task.completed_at = datetime.now().isoformat()
 
+def execute_restore(backup_file, data_file, yes):
+    data_path = Path(data_file) if data_file else storage.storage_path
+
+    if not yes:
+        if not click.confirm(
+            f"About to restore backup '{backup_file}'. This will overwrite your data. Continue?"
+        ):
+            console.print("[yellow]Restore cancelled[/yellow]")
+            return
+
+    restore_from_backup(backup_file, data_path, require_confirm=False)
+    console.print("[green]✓ Restore complete[/green]")
+
 def parse_time_estimate(time_str: str) -> int:
     """Parse time string like '2h', '30m', '1h30m' into minutes"""
     time_str = time_str.lower().strip()
@@ -155,13 +168,7 @@ def backup_list(data_file):
 def backup_restore(backup_file, data_file, yes):
     """Restore tasks from a previous backup. Will ask confirmation by default."""
     try:
-        data_path = Path(data_file) if data_file else storage.storage_path
-        if not yes:
-            if not click.confirm(f"About to restore backup '{backup_file}'. This will overwrite your current tasks file. Continue?"):
-                console.print("[yellow]Restore cancelled[/yellow]")
-                return
-        restore_from_backup(backup_file, data_path, require_confirm=False)
-        console.print("[green]✔ Restore complete[/green]")
+        execute_restore(backup_file, data_file, yes)
     except FileNotFoundError as e:
         console.print(f"[red]Restore failed:[/red] {e}")
         raise click.Abort()
@@ -186,13 +193,7 @@ def restore(backup_file, data_file, yes):
     Usage: tix restore <backup_file>
     """
     try:
-        data_path = Path(data_file) if data_file else storage.storage_path
-        if not yes:
-            if not click.confirm(f"About to restore backup '{backup_file}'. This will overwrite your current tasks file. Continue?"):
-                console.print("[yellow]Restore cancelled[/yellow]")
-                return
-        restore_from_backup(backup_file, data_path, require_confirm=False)
-        console.print("[green]✔ Restore complete[/green]")
+        execute_restore(backup_file, data_file, yes)
     except FileNotFoundError as e:
         console.print(f"[red]Restore failed:[/red] {e}")
         raise click.Abort()
@@ -567,11 +568,7 @@ def done_all(task_ids):
         elif getattr(task, "completed", False):
             already_done.append(tid)
         else:
-            if hasattr(task, "mark_done"):
-                task.mark_done()
-            else:
-                task.completed = True
-                task.completed_at = datetime.now().isoformat()
+            mark_task_done(task)
             storage.update_task(task)
             completed.append((tid, getattr(task, "text", getattr(task, "task", ""))))
     if completed:
