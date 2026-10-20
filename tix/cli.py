@@ -22,6 +22,32 @@ from datetime import datetime
 console = Console()
 storage = TaskStorage()
 
+def copy_attachments(task, attach):
+    if not attach:
+        return
+
+    attachment_dir = Path.home() / ".tix" / "attachments" / str(task.id)
+    attachment_dir.mkdir(parents=True, exist_ok=True)
+
+    for file_path in attach:
+        try:
+            src = Path(file_path).expanduser().resolve()
+
+            if not src.exists():
+                console.print(f"[red]✗[/red] File not found: {file_path}")
+                continue
+
+            dest = attachment_dir / src.name
+            dest.write_bytes(src.read_bytes())
+
+            if not hasattr(task, "attachments"):
+                task.attachments = []
+
+            task.attachments.append(str(dest))
+
+        except Exception as e:
+            console.print(f"[red]✗[/red] Failed to attach {file_path}: {e}")
+
 def parse_time_estimate(time_str: str) -> int:
     """Parse time string like '2h', '30m', '1h30m' into minutes"""
     time_str = time_str.lower().strip()
@@ -206,20 +232,7 @@ def add(task, priority, tag, attach, link, estimate):
     
     new_task = storage.add_task(task, priority, all_tags, estimate=estimate_minutes)
     # Handle attachments
-    if attach:
-        attachment_dir = Path.home() / ".tix" / "attachments" / str(new_task.id)
-        attachment_dir.mkdir(parents=True, exist_ok=True)
-        for file_path in attach:
-            try:
-                src = Path(file_path).expanduser().resolve()
-                if not src.exists():
-                    console.print(f"[red]✗[/red] File not found: {file_path}")
-                    continue
-                dest = attachment_dir / src.name
-                dest.write_bytes(src.read_bytes())
-                new_task.attachments.append(str(dest))
-            except Exception as e:
-                console.print(f"[red]✗[/red] Failed to attach {file_path}: {e}")
+    copy_attachments(new_task, attach)
 
     # Links
     if link:
@@ -496,21 +509,7 @@ def edit(task_id, text, priority, add_tag, remove_tag, attach, link):
             changes.append(f"-tag: '{tag}'")
 
     if attach:
-        attachment_dir = Path.home() / ".tix" / "attachments" / str(task.id)
-        attachment_dir.mkdir(parents=True, exist_ok=True)
-        for file_path in attach:
-            try:
-                src = Path(file_path).expanduser().resolve()
-                if not src.exists():
-                    console.print(f"[red]✗[/red] File not found: {file_path}")
-                    continue
-                dest = attachment_dir / src.name
-                dest.write_bytes(src.read_bytes())
-                if not hasattr(task, "attachments"):
-                    task.attachments = []
-                task.attachments.append(str(dest))
-            except Exception as e:
-                console.print(f"[red]✗[/red] Failed to attach {file_path}: {e}")
+        copy_attachments(task, attach)
         changes.append(f"attachments added: {[Path(f).name for f in attach]}")
 
     if link:
